@@ -4,7 +4,9 @@ on:
   push:
     branches: [main, 'dpe*', 'DPE*']
     paths:
-      - 'src/**'
+      - 'src/**'    
+  pull_request:
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
