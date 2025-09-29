@@ -20,7 +20,7 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-        
+
     - name: Setup Docker buildx
       uses: docker/setup-buildx-action@v3
 
@@ -37,5 +37,5 @@ jobs:
         context: .
         push: true
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}
-        cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}-cache
-        cache-to: type=inline,mode=max
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
