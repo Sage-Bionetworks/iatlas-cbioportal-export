@@ -3,9 +3,14 @@ name: Build and Push Docker Image
 on:
   push:
     branches: [main, 'dpe*', 'DPE*']
-    paths:
-      - 'src/**'
+    paths-ignore:
+      - '**.md'                            # All Markdown files
+
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
 
 jobs:
   build_docker:
