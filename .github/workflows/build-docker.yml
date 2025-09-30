@@ -4,7 +4,7 @@ on:
   push:
     branches: [main, 'dpe*', 'DPE*']
     paths-ignore:
-      - '**.md'                            # All Markdown files
+      - '**.md'                            # Ignore All Markdown files
 
   workflow_dispatch:
 
