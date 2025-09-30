@@ -71,11 +71,19 @@ pip install -r requirements.txt
 ### Setup locally with Docker **(recommended)**
 But it is highly recommended you use the docker image
 
-1. Build the dockerfile
+1. Build the dockerfile 
 
 ```
 cd /orca-recipes/local/iatlas/cbioportal_export
 docker build -f Dockerfile -t <some_docker_image_name> .
+```
+
+OR
+
+1. [Pull pre-existing docker image for your branch from list](https://github.com/Sage-Bionetworks/iatlas-cbioportal-export/pkgs/container/iatlas-cbioportal-export/versions)
+
+```
+docker pull ghcr.io/sage-bionetworks/iatlas-cbioportal-export:main
 ```
 
 2. Run the Dockerfile
