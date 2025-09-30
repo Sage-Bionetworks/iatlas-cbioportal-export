@@ -75,7 +75,7 @@ But it is highly recommended you use the docker image
 
 ```
 cd /orca-recipes/local/iatlas/cbioportal_export
-docker build -f Dockerfile -t <some_docker_name> .
+docker build -f Dockerfile -t <some_docker_image_name> .
 ```
 
 2. Run the Dockerfile
