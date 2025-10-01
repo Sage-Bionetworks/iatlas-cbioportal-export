@@ -77,22 +77,28 @@ def run_genome_nexus(
 ) -> None:
     """Runs genome nexus annotator on each of the split maf chunks. Logging
         is saved for each chunk.
+        
+        This will parallelize the workflow if n_workers is defined or > 1,
+        otherwise it will run genome nexus on each of the chunk(s) serially
 
     Args:
         dataset_name (str): Name of the dataset
         n_maf_chunks (int): Number of chunks the maf was split into
         n_workers (int): Number of worker processes to use to
-            run the genome nexus annotator in parallel
+            run the genome nexus annotator in parallel.
         datahub_tools_path (str): Path to the datahub tools repo
     """
     dataset_dir = os.path.join(
         f"{datahub_tools_path}/add-clinical-header/", dataset_name
     )
 
-    args_list = [(i, dataset_dir) for i in range(1, n_maf_chunks + 1)]
-
-    with Pool(processes=n_workers) as pool:
-        pool.starmap(run_genome_nexus_for_one_chunk, args_list)
+    if n_workers and n_workers > 1:
+        args_list = [(i, dataset_dir) for i in range(1, n_maf_chunks + 1)]
+        with Pool(processes=n_workers) as pool:
+            pool.starmap(run_genome_nexus_for_one_chunk, args_list)
+    else:
+        for i in range(1, n_maf_chunks + 1):
+            run_genome_nexus_for_one_chunk(i, dataset_dir)
 
 
 def run_genome_nexus_for_one_chunk(i: int, dataset_dir: str) -> None:
@@ -289,8 +295,8 @@ def main():
     parser.add_argument(
         "--n_workers",
         type=int,
-        default=3,
-        help="Number of worker processes to run genome nexus in parallel. Optional. Defaults to 3.",
+        default=None,
+        help="Number of worker processes to run genome nexus in parallel. Optional. Defaults to None.",
     )
     parser.add_argument(
         "--clear_workspace",
