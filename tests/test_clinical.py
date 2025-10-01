@@ -10,7 +10,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 import pytest
 
-import clinical as cli_to_cbio
+import src.iatlascbioportalexport.clinical as cli_to_cbio
 
 
 @pytest.fixture
@@ -18,6 +18,21 @@ def syn_mock():
     return mock.create_autospec(cli_to_cbio.syn)
 
 
+@pytest.mark.parametrize(
+    "input, col, expected", 
+    [
+        (
+            pd.DataFrame({"OS_TIME":[231, 1000, 345],"EXTRA_COL":[1, 0, 0]}),
+            "OS_TIME", 
+            pd.DataFrame({"OS_TIME":[7.59, 32.85, 11.33],"EXTRA_COL":[1, 0, 0]})
+        ),
+    ],
+)
+def test_that_convert_days_to_months_converts_correctly(input, col, expected):
+    result = cli_to_cbio.convert_days_to_months(input, col)
+    assert_frame_equal(result, expected)
+    
+    
 @pytest.mark.parametrize(
     "input_samples, neo_samples, expect_error",
     [

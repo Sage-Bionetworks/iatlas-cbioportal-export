@@ -9,9 +9,8 @@ import time
 from typing import Dict, List
 
 import pandas as pd
-import synapseclient
 
-import utils
+from src.iatlascbioportalexport import utils
 
 syn = utils.synapse_login()
 
@@ -340,6 +339,7 @@ def preprocessing(
     cli_remapped = cli_with_neoantigen.rename(columns=cli_to_cbio_mapping_dict)
     cli_remapped = filter_out_non_analyses_samples(cli_remapped)
     cli_remapped = remap_column_values(input_df=cli_remapped)
+    cli_remapped = convert_days_to_months(input_df=cli_remapped)
     cli_remapped_cleaned = remove_suffix_from_column_values(input_df=cli_remapped)
     cli_remapped_cleaned = update_case_of_column_values(
         input_df=cli_remapped_cleaned, cli_to_cbio_mapping=cli_to_cbio_mapping
@@ -504,7 +504,24 @@ def rename_files_on_disk(filepath : str) -> None:
     """
     filepath_new = filepath.removesuffix(".metadata")
     os.replace(filepath, filepath_new)
-    
+
+
+def convert_days_to_months(input_df: pd.DataFrame, col : str) -> pd.DataFrame:
+    """Convert the column that's in days into months 
+        using the conversion rate 1 month = 30.44 days,
+        rounding to two decimal places
+
+    Args:
+        input_df (pd.DataFrame): input data
+
+    Returns:
+        pd.DataFrame: Output data with data transformed
+        from days to months
+    """
+    converted_df = input_df.copy()
+    converted_df[col] = (converted_df[col] / 30.44).round(decimals = 2)
+    return converted_df
+
     
 def get_all_non_na_columns(input_df: pd.DataFrame) -> List[str]:
     """Gets all the columns in input data without all (100%) NAs
