@@ -30,7 +30,13 @@ def syn_mock():
                 {"OS_TIME": [7.59, 32.85, 11.33, 23.2], "EXTRA_COL": [1, 0, 0, 2]}
             ),
         ),
+        (
+            pd.DataFrame({"EXTRA_COL": [1, 0, 0, 2]}),
+            "OS_TIME",
+            pd.DataFrame({"EXTRA_COL": [1, 0, 0, 2]}),
+        ),
     ],
+    ids=["converted_mdf", "nothing_to_convert"],
 )
 def test_that_convert_days_to_months_converts_correctly(input, col, expected):
     result = cli_to_cbio.convert_days_to_months(input, col)
