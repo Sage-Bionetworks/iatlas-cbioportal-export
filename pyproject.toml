@@ -6,7 +6,7 @@ requires-python = ">=3.9,<3.12"
 dependencies = [
   "synapseclient[pandas]>=4,<5",
   "pandas>=2.2",
-  "pyyaml=6.0"
+  "pyyaml==6.0"
 ]
 
 [dependency-groups]
