@@ -339,8 +339,8 @@ def preprocessing(
     cli_remapped = cli_with_neoantigen.rename(columns=cli_to_cbio_mapping_dict)
     cli_remapped = filter_out_non_analyses_samples(cli_remapped)
     cli_remapped = remap_column_values(input_df=cli_remapped)
-    cli_remapped = convert_days_to_months(input_df=cli_remapped, col = "OS_MONTHS")
-    cli_remapped = convert_days_to_months(input_df=cli_remapped, col = "PFS_MONTHS")
+    cli_remapped = convert_days_to_months(input_df=cli_remapped, col="OS_MONTHS")
+    cli_remapped = convert_days_to_months(input_df=cli_remapped, col="PFS_MONTHS")
     cli_remapped_cleaned = remove_suffix_from_column_values(input_df=cli_remapped)
     cli_remapped_cleaned = update_case_of_column_values(
         input_df=cli_remapped_cleaned, cli_to_cbio_mapping=cli_to_cbio_mapping
