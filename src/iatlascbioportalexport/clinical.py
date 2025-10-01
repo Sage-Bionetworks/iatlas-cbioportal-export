@@ -10,7 +10,7 @@ from typing import Dict, List
 
 import pandas as pd
 
-from src.iatlascbioportalexport import utils
+import utils
 
 syn = utils.synapse_login()
 

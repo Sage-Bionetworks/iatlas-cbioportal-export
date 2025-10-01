@@ -19,20 +19,24 @@ def syn_mock():
 
 
 @pytest.mark.parametrize(
-    "input, col, expected", 
+    "input, col, expected",
     [
         (
-            pd.DataFrame({"OS_TIME":[231, 1000, 345],"EXTRA_COL":[1, 0, 0]}),
-            "OS_TIME", 
-            pd.DataFrame({"OS_TIME":[7.59, 32.85, 11.33],"EXTRA_COL":[1, 0, 0]})
+            pd.DataFrame(
+                {"OS_TIME": [231, 1000, 345, 706.208], "EXTRA_COL": [1, 0, 0, 2]}
+            ),
+            "OS_TIME",
+            pd.DataFrame(
+                {"OS_TIME": [7.59, 32.85, 11.33, 23.2], "EXTRA_COL": [1, 0, 0, 2]}
+            ),
         ),
     ],
 )
 def test_that_convert_days_to_months_converts_correctly(input, col, expected):
     result = cli_to_cbio.convert_days_to_months(input, col)
     assert_frame_equal(result, expected)
-    
-    
+
+
 @pytest.mark.parametrize(
     "input_samples, neo_samples, expect_error",
     [
@@ -52,13 +56,16 @@ def test_that_merge_in_neoantigen_study_data_does_expected(
         {"SAMPLE_ID": input_samples, "foo": range(len(input_samples))}
     )
 
-    with mock.patch.object(
-        cli_to_cbio.syn, "get", return_value=SimpleNamespace(path="dummy.tsv")
-    ), mock.patch.object(
-        pd,
-        "read_csv",
-        return_value=pd.DataFrame(
-            {"Sample_ID": neo_samples, "SNV": list(range(len(neo_samples)))}
+    with (
+        mock.patch.object(
+            cli_to_cbio.syn, "get", return_value=SimpleNamespace(path="dummy.tsv")
+        ),
+        mock.patch.object(
+            pd,
+            "read_csv",
+            return_value=pd.DataFrame(
+                {"Sample_ID": neo_samples, "SNV": list(range(len(neo_samples)))}
+            ),
         ),
     ):
         # Use a mock logger so we can assert .error calls directly
@@ -453,8 +460,9 @@ def test_that_get_updated_cli_attributes_updates_correctly():
         }
     )
 
-    with patch.object(pd, "read_csv", return_value=existing_attr_df), patch.object(
-        pd.DataFrame, "to_csv"
+    with (
+        patch.object(pd, "read_csv", return_value=existing_attr_df),
+        patch.object(pd.DataFrame, "to_csv"),
     ):
         # Call the function
         updated_attr_df = cli_to_cbio.get_updated_cli_attributes(mapping_df, "tempdir")
