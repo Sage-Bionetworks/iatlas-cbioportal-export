@@ -9,7 +9,6 @@ import time
 from typing import Dict, List
 
 import pandas as pd
-import synapseclient
 
 import utils
 
@@ -71,23 +70,27 @@ REQUIRED_OUTPUT_FILES = [
     "meta_clinical_sample.txt",
 ]
 
+
 def filter_out_non_analyses_samples(input_df: pd.DataFrame) -> pd.DataFrame:
-    """Filter out the non analyses samples. 
+    """Filter out the non analyses samples.
         This is on a dataset by dataset basis.
-        
-        Here non-analyses samples are defined as DNA only tumor samples and 
+
+        Here non-analyses samples are defined as DNA only tumor samples and
         RNA samples not used in the analyses.
 
     Args:
         input_df (pd.DataFrame): input clinical data
 
     Returns:
-        pd.DataFrame: output clinical data with the non analyses samples 
+        pd.DataFrame: output clinical data with the non analyses samples
             filtered out
     """
     filtered_df = input_df[
-        (~(input_df["SAMPLE_ID"].str.contains(r'-(?:nd|ad|nr)-', na=False)) & 
-        (input_df["Dataset"]=="Anders_JITC_2022")) | (input_df["Dataset"]!="Anders_JITC_2022")
+        (
+            ~(input_df["SAMPLE_ID"].str.contains(r"-(?:nd|ad|nr)-", na=False))
+            & (input_df["Dataset"] == "Anders_JITC_2022")
+        )
+        | (input_df["Dataset"] != "Anders_JITC_2022")
     ]
     return filtered_df
 
@@ -245,7 +248,9 @@ def add_lens_id_as_sample_display_name(
         columns={"lens_id": "SAMPLE_DISPLAY_NAME", "study_sample_name": "SAMPLE_ID"}
     )
     # convert lens sample_id to string
-    lens_id_mapping_renamed["SAMPLE_ID"] = lens_id_mapping_renamed["SAMPLE_ID"].astype(str)
+    lens_id_mapping_renamed["SAMPLE_ID"] = lens_id_mapping_renamed["SAMPLE_ID"].astype(
+        str
+    )
     input_df_mapped = input_df.merge(
         lens_id_mapping_renamed, on=["SAMPLE_ID"], how="left"
     )
@@ -258,9 +263,8 @@ def add_lens_id_as_sample_display_name(
 
 
 def merge_in_neoantigen_study_data(
-    input_df : pd.DataFrame, 
-    neoantigen_data_synid : str, **kwargs
-    ) -> pd.DataFrame:
+    input_df: pd.DataFrame, neoantigen_data_synid: str, **kwargs
+) -> pd.DataFrame:
     """Adds in the new neoantigen summaries study data for the specific
         dataset to the overall clinical dataset (which contains all datasets)
 
@@ -272,14 +276,10 @@ def merge_in_neoantigen_study_data(
         pd.DataFrame: clinical data with neoantigen data added in
     """
     logger = kwargs.get("logger", logging.getLogger(__name__))
-    neoantigen_data = pd.read_csv(syn.get(neoantigen_data_synid).path, sep = "\t")
-    neoantigen_data = neoantigen_data.rename(columns = {"Sample_ID":"SAMPLE_ID"})
-    neoantigen_data['SAMPLE_ID'] = neoantigen_data['SAMPLE_ID'].astype(str)
-    df_with_neoantigen = input_df.merge(
-        neoantigen_data,
-        how = "outer",
-        on = "SAMPLE_ID"
-    )
+    neoantigen_data = pd.read_csv(syn.get(neoantigen_data_synid).path, sep="\t")
+    neoantigen_data = neoantigen_data.rename(columns={"Sample_ID": "SAMPLE_ID"})
+    neoantigen_data["SAMPLE_ID"] = neoantigen_data["SAMPLE_ID"].astype(str)
+    df_with_neoantigen = input_df.merge(neoantigen_data, how="outer", on="SAMPLE_ID")
     if len(df_with_neoantigen) > len(input_df):
         logger.error(
             "There are more rows in the clinical data after merging in the neoantigen data."
@@ -291,7 +291,7 @@ def preprocessing(
     input_df_synid: str,
     cli_to_cbio_mapping: pd.DataFrame,
     cli_to_oncotree_mapping_synid: str,
-    neoantigen_data_synid : str,
+    neoantigen_data_synid: str,
     datahub_tools_path: str,
     **kwargs,
 ) -> pd.DataFrame:
@@ -327,9 +327,9 @@ def preprocessing(
     )
     cli_remapped = remap_clinical_ids_to_paper_ids(input_df=cli_with_oncotree)
     cli_with_neoantigen = merge_in_neoantigen_study_data(
-        input_df = cli_remapped, 
-        neoantigen_data_synid = neoantigen_data_synid,
-        logger = logger
+        input_df=cli_remapped,
+        neoantigen_data_synid=neoantigen_data_synid,
+        logger=logger,
     )
     cli_to_cbio_mapping_dict = dict(
         zip(
@@ -340,6 +340,12 @@ def preprocessing(
     cli_remapped = cli_with_neoantigen.rename(columns=cli_to_cbio_mapping_dict)
     cli_remapped = filter_out_non_analyses_samples(cli_remapped)
     cli_remapped = remap_column_values(input_df=cli_remapped)
+    cli_remapped = convert_days_to_months(
+        input_df=cli_remapped, col="OS_MONTHS", logger=logger
+    )
+    cli_remapped = convert_days_to_months(
+        input_df=cli_remapped, col="PFS_MONTHS", logger=logger
+    )
     cli_remapped_cleaned = remove_suffix_from_column_values(input_df=cli_remapped)
     cli_remapped_cleaned = update_case_of_column_values(
         input_df=cli_remapped_cleaned, cli_to_cbio_mapping=cli_to_cbio_mapping
@@ -444,7 +450,7 @@ def get_updated_cli_attributes(
     """
     cli_attr = pd.read_csv(
         f"{datahub_tools_path}/add-clinical-header/clinical_attributes_metadata.txt",
-        sep="\t"
+        sep="\t",
     )
     cli_to_cbio_mapping_to_append = cli_to_cbio_mapping.rename(
         columns={
@@ -490,13 +496,13 @@ def convert_oncotree_codes(datahub_tools_path: str) -> pd.DataFrame:
     return cli_w_cancer_types
 
 
-def rename_files_on_disk(filepath : str) -> None:
+def rename_files_on_disk(filepath: str) -> None:
     """Renames files on disk by removing the .metadata ext from filenames.
         NOTE: This will overwrite previous files with the same name.
-        
+
         This is needed because the insert_clinical_metadata script from
         datahub-curation-tools saves the sample and patient files with
-        ".metadata" ext but the cbioportal validation tool expects them to be 
+        ".metadata" ext but the cbioportal validation tool expects them to be
         withou the ".metadata"
 
     Args:
@@ -504,8 +510,31 @@ def rename_files_on_disk(filepath : str) -> None:
     """
     filepath_new = filepath.removesuffix(".metadata")
     os.replace(filepath, filepath_new)
-    
-    
+
+
+def convert_days_to_months(input_df: pd.DataFrame, col: str, **kwargs) -> pd.DataFrame:
+    """Convert the column that's in days into months
+        using the conversion rate 1 month = 30.44 days,
+        rounding to two decimal places
+
+    Args:
+        input_df (pd.DataFrame): input data
+        col (str): the column to convert from days to months
+
+    Returns:
+        pd.DataFrame: Output data with data transformed
+        from days to months
+    """
+    logger = kwargs.get("logger", logging.getLogger(__name__))
+    if col in input_df.columns:
+        converted_df = input_df.copy()
+        converted_df[col] = (converted_df[col] / 30.44).round(decimals=2)
+        return converted_df
+    else:
+        logger.info(f"Nothing to convert. {col} doesn't exist in the data.")
+        return input_df
+
+
 def get_all_non_na_columns(input_df: pd.DataFrame) -> List[str]:
     """Gets all the columns in input data without all (100%) NAs
     Args:
@@ -571,13 +600,13 @@ def add_clinical_header(
     python3 {datahub_tools_path}/add-clinical-header/insert_clinical_metadata.py \
         -d {dataset_dir}    
     """
-    time.sleep(2) # give subprocess some time before checking
+    time.sleep(2)  # give subprocess some time before checking
     subprocess.run(cmd, shell=True, executable="/bin/bash")
-    time.sleep(2) # give subprocess some time before checking
-    
+    time.sleep(2)  # give subprocess some time before checking
+
     # remove .metadata from files
-    rename_files_on_disk(filepath = f"{dataset_dir}/data_clinical_patient.txt.metadata")
-    rename_files_on_disk(filepath = f"{dataset_dir}/data_clinical_sample.txt.metadata")
+    rename_files_on_disk(filepath=f"{dataset_dir}/data_clinical_patient.txt.metadata")
+    rename_files_on_disk(filepath=f"{dataset_dir}/data_clinical_sample.txt.metadata")
 
     # saved merged for case lists
     merged_df_subset = input_dfs["merged"][
@@ -837,7 +866,7 @@ def main():
         "--lens_id_mapping_synid",
         type=str,
         help="Synapse id for the study_sample_name (paper ids) to lens id mapping file. Optional. Defaults to None, then adding lens id mapping is skipped",
-        default=None
+        default=None,
     )
     parser.add_argument(
         "--neoantigen_data_synid",
@@ -875,7 +904,7 @@ def main():
         cli_to_oncotree_mapping_synid=args.cli_to_oncotree_mapping_synid,
         neoantigen_data_synid=args.neoantigen_data_synid,
         datahub_tools_path=args.datahub_tools_path,
-        logger = main_logger,
+        logger=main_logger,
     )
     cli_dfs = split_into_patient_and_sample_data(
         input_data=cli_df, cli_to_cbio_mapping=cli_to_cbio_mapping
@@ -896,7 +925,7 @@ def main():
             dataset_name=dataset,
             datahub_tools_path=args.datahub_tools_path,
             log_file_name="iatlas_cli_validation_log.txt",
-            flagger=dataset_flagger
+            flagger=dataset_flagger,
         )
         add_clinical_header(
             input_dfs=cli_dfs,
