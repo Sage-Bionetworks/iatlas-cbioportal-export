@@ -24,7 +24,7 @@ IATLAS_DATASETS = [
     "HTAN_OHSU",
     "HugoLo_IPRES_2016",
     "IMmotion150",
-    "IMVigor210",
+    "IMvigor210",
     "Kim_NatMed_2018",
     "Liu_NatMed_2019",
     "Melero_GBM_2019",

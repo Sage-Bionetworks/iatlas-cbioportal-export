@@ -231,16 +231,18 @@ def validate_export_files(
         output_df (pd.DataFrame): output annotated maf data
     """
     logger = kwargs.get("logger", logging.getLogger(__name__))
-    if len(input_df) != len(output_df):
+    # exclude chrM variants when counting
+    input_df_excl_chrM = input_df[input_df.Chromosome != "chrM"]
+    if len(input_df_excl_chrM) != len(output_df):
         logger.error(
-            f"Output rows {len(output_df)} are not equal to input rows {len(input_df)}."
+            f"Output rows {len(output_df)} are not equal to input rows {len(input_df_excl_chrM)}."
         )
     # no dups
     if len(output_df[output_df.duplicated()]) > 0:
         logger.error("There are duplicates in the output.")
     # check that the Tumor_Sample_Barcode exists in original maf
     if set(list(output_df.Tumor_Sample_Barcode.unique())) != set(
-        list(input_df.Tumor_Sample_Barcode.unique())
+        list(input_df_excl_chrM.Tumor_Sample_Barcode.unique())
     ):
         logger.error(
             "The Tumor_Sample_Barcode values are not equal in the output compared to input."
