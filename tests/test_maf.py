@@ -23,9 +23,10 @@ def test_that_read_and_merge_maf_files_returns_expected_when_has_maf_files(syn_m
 
     syn_mock.get.side_effect = lambda x: mock.Mock(path=f"/fake/path/{x}.maf")
 
-    with mock.patch.object(maf_to_cbio, "syn", syn_mock), mock.patch.object(
-        maf_to_cbio.pd, "read_csv"
-    ) as mock_read_csv:
+    with (
+        mock.patch.object(maf_to_cbio, "syn", syn_mock),
+        mock.patch.object(maf_to_cbio.pd, "read_csv") as mock_read_csv,
+    ):
 
         mock_read_csv.side_effect = [
             pd.DataFrame({"col": [1]}),
@@ -100,20 +101,40 @@ def test_that_postprocessing_removes_chrM_variants():
     [
         # Case 1: Rows are unequal -> Error
         (
-            pd.DataFrame({"Tumor_Sample_Barcode": [10, 20, 20]}),
-            pd.DataFrame({"Tumor_Sample_Barcode": [10, 20]}),
+            pd.DataFrame(
+                {"Tumor_Sample_Barcode": [10, 20, 20], "Chromosome": ["1", "X", "Y"]}
+            ),
+            pd.DataFrame({"Tumor_Sample_Barcode": [10, 20], "Chromosome": ["X", "Y"]}),
             "Output rows 2 are not equal to input rows 3.",
         ),
         # Case 2: output has duplicates -> Error
         (
-            pd.DataFrame({"Tumor_Sample_Barcode": [10, 10, 30]}),
-            pd.DataFrame({"Tumor_Sample_Barcode": [10, 10, 30]}),
+            pd.DataFrame(
+                {"Tumor_Sample_Barcode": [10, 10, 30], "Chromosome": ["1", "X", "Y"]}
+            ),
+            pd.DataFrame(
+                {"Tumor_Sample_Barcode": [10, 10, 30], "Chromosome": ["1", "X", "Y"]}
+            ),
             "There are duplicates in the output.",
         ),
         # Case 3: tumor_sample_barcode vals in output not input -> Error
         (
-            pd.DataFrame({"Tumor_Sample_Barcode": [10, 23, 30]}),
-            pd.DataFrame({"Tumor_Sample_Barcode": [10, 20, 30]}),
+            pd.DataFrame(
+                {"Tumor_Sample_Barcode": [10, 23, 30], "Chromosome": ["1", "X", "Y"]}
+            ),
+            pd.DataFrame(
+                {"Tumor_Sample_Barcode": [10, 20, 30], "Chromosome": ["1", "X", "Y"]}
+            ),
+            "The Tumor_Sample_Barcode values are not equal in the output compared to input.",
+        ),
+        # Case 4: has chrM variants and after removing, input rows and output rows are unequal
+        (
+            pd.DataFrame(
+                {"Tumor_Sample_Barcode": [10, 23, 30], "Chromosome": ["chrM", "X", "Y"]}
+            ),
+            pd.DataFrame(
+                {"Tumor_Sample_Barcode": [10, 20, 30], "Chromosome": ["chrM", "X", "Y"]}
+            ),
             "The Tumor_Sample_Barcode values are not equal in the output compared to input.",
         ),
     ],
@@ -131,7 +152,7 @@ def test_that_validate_export_files_does_expected_error_logging(
 def test_that_validate_export_files_has_no_logging_when_valid(caplog):
     # Rows are equal, no duplicates, and tumor_sample_barcode matches -> No error
     input = pd.DataFrame(
-        {"Tumor_Sample_Barcode": [10, 20, 30], "Chromosome": ["M", "2", "1"]}
+        {"Tumor_Sample_Barcode": [5, 10, 20, 30], "Chromosome": ["chrM", "M", "2", "1"]}
     )
     output = pd.DataFrame(
         {"Tumor_Sample_Barcode": [10, 20, 30], "Chromosome": ["M", "2", "1"]}
