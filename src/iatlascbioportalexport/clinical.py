@@ -535,7 +535,7 @@ def convert_days_to_months(input_df: pd.DataFrame, col: str, **kwargs) -> pd.Dat
         return input_df
 
 
-def get_all_non_na_columns(input_df: pd.DataFrame) -> List[str]:
+def get_all_non_na_columns(input_df: pd.DataFrame, **kwargs) -> List[str]:
     """Gets all the columns in input data without all (100%) NAs
     Args:
         input_df (pd.DataFrame): input data
@@ -544,6 +544,10 @@ def get_all_non_na_columns(input_df: pd.DataFrame) -> List[str]:
         List[str]: Returns a list of column names in df where there is at least
         one value (subsets out columns with all NAs)
     """
+    logger = kwargs.get("logger", logging.getLogger(__name__))
+    logger.info(
+        f"These columns with all NAs will be removed: {input_df.columns[input_df.isna().all()].tolist()}"
+    )
     return input_df.columns[~input_df.isna().all()].tolist()
 
 

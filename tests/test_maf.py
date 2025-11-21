@@ -218,3 +218,52 @@ def test_validate_that_allele_freq_are_not_na_does_expected_logging(
         )
     else:
         assert len(caplog.records) == 0
+
+
+
+def test_summarize_error_report(tmp_path):
+    dataset_dir = tmp_path / "dataset"
+    dataset_dir.mkdir()
+
+    # mock data_mutations_error_report.txt
+    input_file = dataset_dir / "data_mutations_error_report.txt"
+    df_input = pd.DataFrame(
+        {
+            "CHR": ["chr1", "chrM", "chr2", "chr1"],
+            "FAILURE_REASON": ["ReasonA", "ReasonA", "ReasonB", "ReasonA"],
+            "VARIANT_CLASSIFICATION": [
+                "Class1",
+                "Class1",
+                "Class2",
+                "Class1",
+            ],
+        }
+    )
+    df_input.to_csv(input_file, sep="\t", index=False)
+    mock_logger = mock.MagicMock()
+
+    summary = maf_to_cbio.summarize_error_report(
+        dataset_name="dummy",
+        datahub_tools_path="/unused",
+        logger=mock_logger,
+    )
+
+    # Assert expected output
+    # chrM row is ignored
+    # Remaining rows:
+    # ReasonA / Class1 → 2 rows (chr1, chr1)
+    # ReasonB / Class2 → 1 row (chr2)
+    expected = pd.DataFrame(
+        {
+            "FAILURE_REASON": ["ReasonA", "ReasonB"],
+            "VARIANT_CLASSIFICATION": ["Class1", "Class2"],
+            "N": [2, 1],
+        }
+    )
+
+    pd.testing.assert_frame_equal(summary.sort_values(by=["FAILURE_REASON"]),
+                                  expected.sort_values(by=["FAILURE_REASON"]),
+                                  check_like=True)
+
+
+    mock_logger.info.assert_any_call("Grouped error summary (excluding chrM):")
