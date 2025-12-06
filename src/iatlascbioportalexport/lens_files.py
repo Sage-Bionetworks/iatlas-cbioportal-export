@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import shutil
 from typing import Dict
@@ -6,6 +7,10 @@ from typing import Dict
 from iatlascbioportalexport import utils
 
 syn = utils.synapse_login()
+
+# simple logger
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 
 def parse_metadata_kv(text: str) -> Dict[str, str]:
@@ -80,8 +85,8 @@ def download_and_patch_files(
             data_filename key in the metadata file
     """
     # Download both entities
-    data_ent = syn.get(data_synid, downloadLocation=out_dir)
-    meta_ent = syn.get(meta_synid, downloadLocation=out_dir)
+    data_ent = syn.get(data_synid)
+    meta_ent = syn.get(meta_synid)
 
     downloaded_data_path = data_ent.path
     downloaded_meta_path = meta_ent.path
@@ -105,9 +110,9 @@ def download_and_patch_files(
     with open(final_meta_path, "w", encoding="utf-8") as f:
         f.write(write_metadata_kv(meta))
 
-    print(f"Wrote:")
-    print(f"  data: {final_data_path}")
-    print(f"  meta: {final_meta_path}")
+    logger.info("Wrote:")
+    logger.info(f"  data: {final_data_path}")
+    logger.info(f"  meta: {final_meta_path}")
 
 
 def main():
@@ -120,9 +125,9 @@ def main():
     parser.add_argument("--generic-assay-data-synid", required=True)
     parser.add_argument("--generic-assay-metadata-synid", required=True)
 
-    # Pair 2: gene expression
-    parser.add_argument("--gene-expression-data-synid", required=True)
-    parser.add_argument("--gene-expression-metadata-synid", required=True)
+    # Pair 2: expression
+    parser.add_argument("--expression-data-synid", required=True)
+    parser.add_argument("--expression-metadata-synid", required=True)
 
     parser.add_argument(
         "--datahub_tools_path",
@@ -142,22 +147,22 @@ def main():
         data_synid=args.generic_assay_data_synid,
         meta_synid=args.generic_assay_metadata_synid,
         out_dir=out_dir,
-        out_data_filename="data_rna_seq_mrna.txt",
-        out_meta_filename="meta_rna_seq_mrna.txt",
-        cancer_study_identifier=f"iatlas_{args.dataset}",
-        data_filename_in_meta="data_rna_seq_mrna.txt",
-    )
-
-    # gene expression files
-    download_and_patch_files(
-        syn=syn,
-        data_synid=args.gene_expression_data_synid,
-        meta_synid=args.gene_expression_metadata_synid,
-        out_dir=out_dir,
         out_data_filename="data_gene_signatures.txt",
         out_meta_filename="meta_gene_signatures.txt",
         cancer_study_identifier=f"iatlas_{args.dataset}",
         data_filename_in_meta="data_gene_signatures.txt",
+    )
+
+    # expression files
+    download_and_patch_files(
+        syn=syn,
+        data_synid=args.expression_data_synid,
+        meta_synid=args.expression_metadata_synid,
+        out_dir=out_dir,
+        out_data_filename="data_rna_seq_mrna.txt",
+        out_meta_filename="meta_rna_seq_mrna.txt",
+        cancer_study_identifier=f"iatlas_{args.dataset}",
+        data_filename_in_meta="data_rna_seq_mrna.txt",
     )
 
 

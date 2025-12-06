@@ -149,8 +149,8 @@ def test_download_and_patch_files_happy_path(mock_syn, tmp_path, capsys):
     )
 
     # syn.get called correctly
-    mock_syn.get.assert_any_call("synDATA", downloadLocation=str(out_dir))
-    mock_syn.get.assert_any_call("synMETA", downloadLocation=str(out_dir))
+    mock_syn.get.assert_any_call("synDATA")
+    mock_syn.get.assert_any_call("synMETA")
     assert mock_syn.get.call_count == 2
 
     # data file copied to standardized name
@@ -169,12 +169,6 @@ def test_download_and_patch_files_happy_path(mock_syn, tmp_path, capsys):
 
     # an unrelated key preserved
     assert "datatype: CONTINUOUS" in meta_text
-
-    # prints something helpful
-    captured = capsys.readouterr()
-    assert "Wrote:" in captured.out
-    assert "data_rna_seq_mrna.txt" in captured.out
-    assert "meta_rna_seq_mrna.txt" in captured.out
 
 
 def test_download_and_patch_files_overwrites_prior_outputs(mock_syn, tmp_path):
