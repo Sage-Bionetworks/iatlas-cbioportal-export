@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 import pandas as pd
 
-import maf as maf_to_cbio
+from src.iatlascbioportalexport import maf as maf_to_cbio
 
 
 @pytest.fixture
@@ -23,9 +23,10 @@ def test_that_read_and_merge_maf_files_returns_expected_when_has_maf_files(syn_m
 
     syn_mock.get.side_effect = lambda x: mock.Mock(path=f"/fake/path/{x}.maf")
 
-    with mock.patch.object(maf_to_cbio, "syn", syn_mock), mock.patch.object(
-        maf_to_cbio.pd, "read_csv"
-    ) as mock_read_csv:
+    with (
+        mock.patch.object(maf_to_cbio, "syn", syn_mock),
+        mock.patch.object(maf_to_cbio.pd, "read_csv") as mock_read_csv,
+    ):
 
         mock_read_csv.side_effect = [
             pd.DataFrame({"col": [1]}),

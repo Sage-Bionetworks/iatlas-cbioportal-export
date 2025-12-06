@@ -307,10 +307,10 @@ Tests are written via `pytest`.
 In your docker environment or local environment, install `pytest` via
 
 ```
-pip install pytest
+pip install -e ".[dev]"
 ```
 
 Then run all tests via
 ```
-python3 -m pytest tests
+pytest
 ```

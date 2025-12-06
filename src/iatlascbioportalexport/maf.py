@@ -7,9 +7,10 @@ from typing import Dict
 
 import pandas as pd
 
-import utils
+from iatlascbioportalexport import utils
 
 syn = utils.synapse_login()
+
 
 def read_and_merge_maf_files(input_folder_synid: str) -> pd.DataFrame:
     """Read in and merge MAF files from a specified folder
@@ -77,7 +78,7 @@ def run_genome_nexus(
 ) -> None:
     """Runs genome nexus annotator on each of the split maf chunks. Logging
         is saved for each chunk.
-        
+
         This will parallelize the workflow if n_workers is defined or > 1,
         otherwise it will run genome nexus on each of the chunk(s) serially
 
@@ -304,7 +305,7 @@ def main():
         default=False,
         help="Whether to clear local directory of files or not",
     )
-    
+
     args = parser.parse_args()
     if args.clear_workspace:
         utils.clear_workspace(dir_path=f"{args.datahub_tools_path}/add-clinical-header")
@@ -313,7 +314,7 @@ def main():
         dataset_name=args.dataset,
         datahub_tools_path=args.datahub_tools_path,
         log_file_name="iatlas_maf_validation_log.txt",
-        flagger=dataset_flagger
+        flagger=dataset_flagger,
     )
     maf_df = read_and_merge_maf_files(input_folder_synid=args.input_folder_synid)
     n_maf_chunks = split_into_chunks(

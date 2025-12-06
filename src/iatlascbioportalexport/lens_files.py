@@ -3,9 +3,10 @@ import os
 import shutil
 from typing import Dict
 
-import utils
+from iatlascbioportalexport import utils
 
 syn = utils.synapse_login()
+
 
 def parse_metadata_kv(text: str) -> Dict[str, str]:
     """
@@ -14,10 +15,13 @@ def parse_metadata_kv(text: str) -> Dict[str, str]:
     Lines starting with '#' or blank lines are ignored.
 
     Args:
-        text (str): _description_
+        text (str): input text of read in metadata file
 
     Returns:
-        Dict[str, str]: _description_
+        Dict[str, str]: Output metadata dictionary of form:
+            'key: value',
+            'key: value'
+            ...
     """
     meta = {}
     for raw_line in text.splitlines():
@@ -38,16 +42,19 @@ def write_metadata_kv(meta: Dict[str, str]) -> str:
     and you don't reorder keys).
 
     Args:
-        meta (Dict[str, str]): _description_
+        meta (Dict[str, str]): Input metadata dictionary of form:
+            'key: value',
+            'key: value'
+            ...
 
     Returns:
-        str: _description_
+        str: the metadata as text
     """
     return "\n".join(f"{k}: {v}" for k, v in meta.items()) + "\n"
 
 
 def download_and_patch_files(
-    syn : "synapseclient.Synapse",
+    syn: "synapseclient.Synapse",
     data_synid: str,
     meta_synid: str,
     out_dir: str,
@@ -56,17 +63,21 @@ def download_and_patch_files(
     cancer_study_identifier: str,
     data_filename_in_meta: str,
 ) -> None:
-    """_summary_
+    """Downloads the listed file and associated metadata file
+        from Synapse, does some modifying of the fields and saves as
+        standardized names
 
     Args:
-        syn (synapseclient.Synapse): _description_
-        data_synid (str): _description_
-        meta_synid (str): _description_
-        out_dir (str): _description_
-        out_data_filename (str): _description_
-        out_meta_filename (str): _description_
-        cancer_study_identifier (str): _description_
-        data_filename_in_meta (str): _description_
+        syn (synapseclient.Synapse): Synapse client connection
+        data_synid (str): Synapse id of input data
+        meta_synid (str): Synapse id of metadata file
+        out_dir (str): Output directory
+        out_data_filename (str): Output data filename
+        out_meta_filename (str): output metadata filename
+        cancer_study_identifier (str): value to replace with in the
+            cancer_study_identifier key in the metadata file
+        data_filename_in_meta (str): value to replace with in the
+            data_filename key in the metadata file
     """
     # Download both entities
     data_ent = syn.get(data_synid, downloadLocation=out_dir)
@@ -80,6 +91,8 @@ def download_and_patch_files(
         meta_text = f.read()
 
     meta = parse_metadata_kv(meta_text)
+
+    # update these fields
     meta["cancer_study_identifier"] = cancer_study_identifier
     meta["data_filename"] = data_filename_in_meta
 
@@ -110,7 +123,7 @@ def main():
     # Pair 2: gene expression
     parser.add_argument("--gene-expression-data-synid", required=True)
     parser.add_argument("--gene-expression-metadata-synid", required=True)
-    
+
     parser.add_argument(
         "--datahub_tools_path",
         type=str,

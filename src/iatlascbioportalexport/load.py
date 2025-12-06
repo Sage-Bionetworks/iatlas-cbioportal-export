@@ -5,9 +5,10 @@ import sys
 
 import synapseclient
 
-import utils
+from iatlascbioportalexport import utils
 
 syn = utils.synapse_login()
+
 
 def write_case_lists_all_and_sequenced(
     dataset_name: str, datahub_tools_path: str, study_id: str
@@ -33,7 +34,7 @@ def write_case_lists_all_and_sequenced(
         -i {study_id}
     """
     subprocess.run(cmd, shell=True, executable="/bin/bash")
-    
+
 
 def save_to_synapse(
     dataset_name: str,
@@ -61,10 +62,10 @@ def save_to_synapse(
                 f"{dataset_dir}/{file}",
                 name=file,
                 parent=output_folder_synid,
-                version_comment=version_comment
+                version_comment=version_comment,
             )
         )
-    
+
     # store case lists
     case_list_files = os.listdir(os.path.join(dataset_dir, "case_lists"))
     case_list_folder = synapseclient.Folder("case_lists", parent=output_folder_synid)
@@ -80,7 +81,7 @@ def save_to_synapse(
                 version_comment=version_comment,
             )
         )
-    
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -120,7 +121,7 @@ def main():
     args = parser.parse_args()
     if args.create_case_lists:
         write_case_lists_all_and_sequenced(
-            dataset_name=args.dataset, 
+            dataset_name=args.dataset,
             datahub_tools_path=args.datahub_tools_path,
             study_id=f"iatlas_{args.dataset}",
         )

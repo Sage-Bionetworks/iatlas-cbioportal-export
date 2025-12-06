@@ -5,7 +5,7 @@ from unittest import mock
 import pandas as pd
 import pytest
 
-import validate
+from src.iatlascbioportalexport import validate
 
 
 @pytest.mark.parametrize(
@@ -20,7 +20,12 @@ import validate
         # IDs match -> no error
         (["1", "2"], [1, 2], False),
     ],
-    ids=["ids_match", "less_neoantigen_samples", "more_neoantigen_samples", "mismatch_dtypes"],
+    ids=[
+        "ids_match",
+        "less_neoantigen_samples",
+        "more_neoantigen_samples",
+        "mismatch_dtypes",
+    ],
 )
 def test_that_merge_in_neoantigen_study_data_does_expected(
     input_samples, neo_samples, expect_error
@@ -29,13 +34,16 @@ def test_that_merge_in_neoantigen_study_data_does_expected(
         {"Tumor_Sample_Barcode": input_samples, "foo": range(len(input_samples))}
     )
 
-    with mock.patch.object(
-        validate.syn, "get", return_value=SimpleNamespace(path="dummy.tsv")
-    ), mock.patch.object(
-        pd,
-        "read_csv",
-        return_value=pd.DataFrame(
-            {"Sample_ID": neo_samples, "SNV": list(range(len(neo_samples)))}
+    with (
+        mock.patch.object(
+            validate.syn, "get", return_value=SimpleNamespace(path="dummy.tsv")
+        ),
+        mock.patch.object(
+            pd,
+            "read_csv",
+            return_value=pd.DataFrame(
+                {"Sample_ID": neo_samples, "SNV": list(range(len(neo_samples)))}
+            ),
         ),
     ):
         # Use a mock logger so we can assert .error calls directly
@@ -61,7 +69,7 @@ def test_that_merge_in_neoantigen_study_data_does_expected(
                 {col: ["dummy"] for col in validate.REQUIRED_MAF_COLS},
             ),
             False,
-            ""
+            "",
         ),
         # Case 2: Has missing column
         (
@@ -83,9 +91,10 @@ def test_validate_that_required_columns_are_present_expected_logging(
 ):
     with caplog.at_level(logging.ERROR):
         validate.validate_that_required_columns_are_present(
-            df, 
-            required_cols = validate.REQUIRED_MAF_COLS,
-            dataset_file_name = "data_mutations.txt")
+            df,
+            required_cols=validate.REQUIRED_MAF_COLS,
+            dataset_file_name="data_mutations.txt",
+        )
 
     if expect_error:
         assert len(caplog.records) == 1 and caplog.records[0].message == error
