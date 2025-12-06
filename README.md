@@ -231,7 +231,7 @@ Any additional files are the intermediate processing files and can be ignored.
 5. Run the general validation + cbioportal validator on your outputted files via `validate.py`
 6. Check your `cbioportal_validator_output.txt`
 7. Resolve any `ERROR`s
-8. Repeat steps 4-6 until all `ERROR`s are gone
+8. Repeat steps 5-7 until all `ERROR`s are gone
 9. Run `load.py` now with the `upload` flag to upload to synapse
 
 **Example:**
@@ -265,7 +265,7 @@ python3 lens_files.py
   --generic-assay-data-synid syn12345678 \
   --generic-assay-metadata-synid syn23456789 \
   --gene-expression-data-synid syn34567890 \
-  --gene-expression-metadata-synid syn45678901
+  --gene-expression-metadata-synid syn45678901 \
   --datahub_tools_path /<some_path>/datahub-study-curation-tools 
 ```
 
