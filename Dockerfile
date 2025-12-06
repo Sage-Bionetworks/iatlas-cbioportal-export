@@ -8,14 +8,11 @@ ENV VIRTUAL_ENV=/opt/venv
 # Place entry points in the environment at the front of the path
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Install dep
-COPY pyproject.toml uv.lock* ./
-
-# Install exactly what's locked (fails if lock is out of date)
-RUN uv sync --frozen --no-dev
-
-# copy code 
+# copy everything (includes src/)
 COPY . .
+
+# now install
+RUN uv sync --frozen --no-dev
 
 WORKDIR /root/
 
