@@ -2,17 +2,12 @@
 FROM ghcr.io/astral-sh/uv:python3.10-bookworm
 WORKDIR /root/cbioportal_export/
 
-RUN uv venv /opt/venv
-# Use the virtual environment automatically
-ENV VIRTUAL_ENV=/opt/venv
-# Place entry points in the environment at the front of the path
-ENV PATH="/opt/venv/bin:$PATH"
-
-# copy everything (includes src/)
 COPY . .
 
-# now install
 RUN uv sync --frozen --no-dev
+
+# from here on, use uv run or call python in .venv explicitly
+ENV PATH="/root/cbioportal_export/.venv/bin:$PATH"
 
 WORKDIR /root/
 
