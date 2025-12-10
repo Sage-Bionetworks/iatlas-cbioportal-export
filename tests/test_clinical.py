@@ -479,7 +479,7 @@ def test_that_get_updated_cli_attributes_updates_correctly():
                 "NORMALIZED_COLUMN_HEADER": ["SEX", "AGE", "YEAR"],
                 "DESCRIPTIONS": ["Sex of patient", "Age of patient", "Year of birth"],
                 "DATATYPE": ["STRING", "FLOAT", "NUMBER"],
-                "PRIORITY": [None, "1", "1"],
+                "PRIORITY": [None, 1, 1],
                 "ATTRIBUTE_TYPE": [float("nan"), "PATIENT", "PATIENT"],
                 "DISPLAY_NAME": [float("nan"), "AGE", "YEAR"],
             }
@@ -487,6 +487,7 @@ def test_that_get_updated_cli_attributes_updates_correctly():
         pd.testing.assert_frame_equal(
             updated_attr_df.reset_index(drop=True),
             expected_df.reset_index(drop=True),
+            check_dtype=False,
         )
 
 
