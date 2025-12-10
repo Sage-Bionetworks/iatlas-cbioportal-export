@@ -103,7 +103,9 @@ def download_and_patch_files(
 
     # Save final data file
     final_data_path = os.path.join(out_dir, out_data_filename)
-    shutil.copyfile(downloaded_data_path, final_data_path)
+    # Avoid SameFileError if source and destination are the same
+    if os.path.abspath(downloaded_data_path) != os.path.abspath(final_data_path):
+        shutil.copyfile(downloaded_data_path, final_data_path)
 
     # Save final metadata file
     final_meta_path = os.path.join(out_dir, out_meta_filename)
@@ -122,16 +124,33 @@ def main():
     parser.add_argument("--dataset", required=True, help="Dataset name")
 
     # Pair 1: generic assay
-    parser.add_argument("--generic-assay-data-synid", required=True)
-    parser.add_argument("--generic-assay-metadata-synid", required=True)
+    parser.add_argument(
+        "--generic-assay-data-synid", 
+        required=True,
+        help="Synapse id of the generic assay data",
+    )
+    parser.add_argument(
+        "--generic-assay-metadata-synid", 
+        required=True,
+        help="Path to datahub-study-curation-tools repo",
+    )
 
     # Pair 2: expression
-    parser.add_argument("--expression-data-synid", required=True)
-    parser.add_argument("--expression-metadata-synid", required=True)
+    parser.add_argument(
+        "--expression-data-synid", 
+        required=True,
+        help="Synapse id of the expression data",
+    )
+    parser.add_argument(
+        "--expression-metadata-synid", 
+        required=True,
+        help="Synapse id of the expression metadata file",
+    )
 
     parser.add_argument(
         "--datahub_tools_path",
         type=str,
+        required=True,
         help="Path to datahub-study-curation-tools repo",
     )
 
