@@ -224,6 +224,7 @@ Sample workflow
 Run clinical processing
 ```
 python3 clinical.py 
+    --dataset Riaz
     --input_df_synid syn66314245 \
     --cli_to_cbio_mapping_synid syn66276162 
     --cli_to_oncotree_mapping_synid syn66313842 \

@@ -11,6 +11,7 @@ import utils
 
 syn = utils.synapse_login()
 
+
 def read_and_merge_maf_files(input_folder_synid: str) -> pd.DataFrame:
     """Read in and merge MAF files from a specified folder
 
@@ -77,7 +78,7 @@ def run_genome_nexus(
 ) -> None:
     """Runs genome nexus annotator on each of the split maf chunks. Logging
         is saved for each chunk.
-        
+
         This will parallelize the workflow if n_workers is defined or > 1,
         otherwise it will run genome nexus on each of the chunk(s) serially
 
@@ -231,16 +232,18 @@ def validate_export_files(
         output_df (pd.DataFrame): output annotated maf data
     """
     logger = kwargs.get("logger", logging.getLogger(__name__))
-    if len(input_df) != len(output_df):
+    # exclude chrM variants when counting
+    input_df_excl_chrM = input_df[input_df.Chromosome != "chrM"]
+    if len(input_df_excl_chrM) != len(output_df):
         logger.error(
-            f"Output rows {len(output_df)} are not equal to input rows {len(input_df)}."
+            f"Output rows {len(output_df)} are not equal to input rows {len(input_df_excl_chrM)}."
         )
     # no dups
     if len(output_df[output_df.duplicated()]) > 0:
         logger.error("There are duplicates in the output.")
     # check that the Tumor_Sample_Barcode exists in original maf
     if set(list(output_df.Tumor_Sample_Barcode.unique())) != set(
-        list(input_df.Tumor_Sample_Barcode.unique())
+        list(input_df_excl_chrM.Tumor_Sample_Barcode.unique())
     ):
         logger.error(
             "The Tumor_Sample_Barcode values are not equal in the output compared to input."
@@ -267,6 +270,40 @@ def validate_that_allele_freq_are_not_na(
             logger.error(
                 f"There are NAs in the allele frequency columns: {allele_freq_cols}"
             )
+
+
+def summarize_error_report(
+    dataset_name: str, datahub_tools_path: str, **kwargs
+) -> pd.DataFrame:
+    """Summarizes the error report based on FAILURE_REASON
+    and VARIANT_CLASSIFICATION for quick review
+
+    Args:
+        dataset_name (str): name of dataset
+        datahub_tools_path (str):  Path to the datahub tools repo
+
+    Returns:
+        pd.DataFrame: summary table of the failed error reports
+    """
+    logger = kwargs.get("logger", logging.getLogger(__name__))
+    dataset_dir = utils.get_local_dataset_output_folder_path(
+        dataset_name=dataset_name, datahub_tools_path=datahub_tools_path
+    )
+    df = pd.read_csv(
+        os.path.join(dataset_dir, "data_mutations_error_report.txt"), sep="\t"
+    )
+    df_filtered = df[df["CHR"] != "chrM"]  # ignore chrM errors
+
+    summary = (
+        df_filtered.groupby(["FAILURE_REASON", "VARIANT_CLASSIFICATION"])
+        .size()
+        .reset_index(name="N")
+    )
+
+    logger.info("Grouped error summary (excluding chrM):")
+    logger.info("\n" + summary.to_string(index=False))
+
+    return summary
 
 
 def main():
@@ -304,7 +341,7 @@ def main():
         default=False,
         help="Whether to clear local directory of files or not",
     )
-    
+
     args = parser.parse_args()
     if args.clear_workspace:
         utils.clear_workspace(dir_path=f"{args.datahub_tools_path}/add-clinical-header")
@@ -313,7 +350,7 @@ def main():
         dataset_name=args.dataset,
         datahub_tools_path=args.datahub_tools_path,
         log_file_name="iatlas_maf_validation_log.txt",
-        flagger=dataset_flagger
+        flagger=dataset_flagger,
     )
     maf_df = read_and_merge_maf_files(input_folder_synid=args.input_folder_synid)
     n_maf_chunks = split_into_chunks(
@@ -339,6 +376,11 @@ def main():
     validate_that_allele_freq_are_not_na(mafs["annotated_maf"], logger=dataset_logger)
     generate_meta_files(
         dataset_name=args.dataset, datahub_tools_path=args.datahub_tools_path
+    )
+    summarize_error_report(
+        dataset_name=args.dataset,
+        datahub_tools_path=args.datahub_tools_path,
+        logger=dataset_logger,
     )
     if dataset_flagger.had_error:
         dataset_logger.error("FAILED: Validation of study failed")
