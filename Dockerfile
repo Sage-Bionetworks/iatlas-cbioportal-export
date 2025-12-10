@@ -1,16 +1,16 @@
 # uv + Python 3.10 preinstalled
 FROM ghcr.io/astral-sh/uv:python3.10-bookworm
-WORKDIR /workspace/cbioportal_export
+WORKDIR /workspace/iatlas_cbioportal_export
 
 COPY . .
 
 RUN uv sync --frozen --no-dev
 
 # make sure any UID can read/traverse
-RUN chmod -R a+rX /workspace/bioportal_export
+RUN chmod -R a+rX /workspace/iatlas_cbioportal_export
 
 # from here on, use uv run or call python in .venv explicitly
-ENV PATH="/workspace/cbioportal_export/.venv/bin:$PATH"
+ENV PATH="/workspace/iatlas_cbioportal_export/.venv/bin:$PATH"
 
 WORKDIR /workspace/
 
@@ -21,4 +21,4 @@ RUN git clone https://github.com/cBioPortal/cbioportal.git -b v6.3.2
 RUN chmod -R a+rX /workspace/datahub-study-curation-tools /workspace/cbioportal
 
 
-WORKDIR /workspace/cbioportal_export
+WORKDIR /workspace/iatlas_cbioportal_export
