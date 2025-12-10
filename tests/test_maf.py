@@ -23,10 +23,11 @@ def test_that_read_and_merge_maf_files_returns_expected_when_has_maf_files(syn_m
 
     syn_mock.get.side_effect = lambda x: mock.Mock(path=f"/fake/path/{x}.maf")
 
-    with (
-        mock.patch.object(maf_to_cbio, "syn", syn_mock),
-        mock.patch.object(maf_to_cbio.pd, "read_csv") as mock_read_csv,
-    ):
+    with mock.patch.object(
+        maf_to_cbio, "syn", syn_mock
+    ), mock.patch.object(
+        maf_to_cbio.pd, "read_csv"
+    ) as mock_read_csv:
 
         mock_read_csv.side_effect = [
             pd.DataFrame({"col": [1]}),
@@ -130,10 +131,10 @@ def test_that_postprocessing_removes_chrM_variants():
         # Case 4: has chrM variants and after removing, input rows and output rows are unequal
         (
             pd.DataFrame(
-                {"Tumor_Sample_Barcode": [10, 23, 30], "Chromosome": ["chrM", "X", "Y"]}
+                {"Tumor_Sample_Barcode": [23, 30], "Chromosome": ["X", "Y"]}
             ),
             pd.DataFrame(
-                {"Tumor_Sample_Barcode": [10, 20, 30], "Chromosome": ["chrM", "X", "Y"]}
+                {"Tumor_Sample_Barcode": [20, 30], "Chromosome": ["X", "Y"]}
             ),
             "The Tumor_Sample_Barcode values are not equal in the output compared to input.",
         ),
