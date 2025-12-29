@@ -7,7 +7,7 @@ from typing import Dict
 
 import pandas as pd
 
-import utils
+from iatlascbioportalexport import utils
 
 syn = utils.synapse_login()
 

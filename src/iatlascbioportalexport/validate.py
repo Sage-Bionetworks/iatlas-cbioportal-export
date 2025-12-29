@@ -6,7 +6,7 @@ from typing import Dict
 
 import pandas as pd
 
-import utils
+from iatlascbioportalexport import utils
 
 syn = utils.synapse_login()
 
@@ -129,8 +129,9 @@ REQUIRED_MAF_COLS = [
     "Peptide",
     "HLA_Allele",
     "MHCflurry_2.1.1_affinity_nm",
-    "MHCflurry_2.1.1_presentation_score"
+    "MHCflurry_2.1.1_presentation_score",
 ]
+
 
 def validate_that_neoantigen_maf_ids_are_equal(
     input_df: pd.DataFrame, neoantigen_data_synid: pd.DataFrame, **kwargs
@@ -144,11 +145,11 @@ def validate_that_neoantigen_maf_ids_are_equal(
     """
     logger = kwargs.get("logger", logging.getLogger(__name__))
     neoantigen_data = pd.read_csv(syn.get(neoantigen_data_synid).path, sep="\t")
-    
+
     # set both to string to standardize
     neoantigen_data["Sample_ID"] = neoantigen_data["Sample_ID"].astype(str)
     input_df["Tumor_Sample_Barcode"] = input_df["Tumor_Sample_Barcode"].astype(str)
-    
+
     if set(input_df["Tumor_Sample_Barcode"].unique()) != set(
         neoantigen_data["Sample_ID"].unique()
     ):
@@ -156,8 +157,9 @@ def validate_that_neoantigen_maf_ids_are_equal(
             "The Tumor_Sample_Barcode values in the maf data do not match the Sample_ID values in the neoantigen data."
         )
 
+
 def validate_that_required_columns_are_present(
-    input_df: pd.DataFrame, dataset_file_name : str, required_cols : list, **kwargs
+    input_df: pd.DataFrame, dataset_file_name: str, required_cols: list, **kwargs
 ) -> None:
     """Validate that required set of columns are present
 
@@ -169,7 +171,9 @@ def validate_that_required_columns_are_present(
     logger = kwargs.get("logger", logging.getLogger(__name__))
     if set(required_cols) != set(list(input_df.columns)):
         missing_cols = set(required_cols) - set(list(input_df.columns))
-        logger.error(f"Missing required columns in {dataset_file_name}: {list(missing_cols)}")
+        logger.error(
+            f"Missing required columns in {dataset_file_name}: {list(missing_cols)}"
+        )
 
 
 def get_all_files_to_validate(
@@ -258,7 +262,7 @@ def main():
         dataset_name=args.dataset,
         datahub_tools_path=args.datahub_tools_path,
         log_file_name="iatlas_validation_log.txt",
-        flagger=dataset_flagger
+        flagger=dataset_flagger,
     )
     validate_that_neoantigen_maf_ids_are_equal(
         input_df=all_files["data_mutations.txt"],
@@ -266,9 +270,9 @@ def main():
         logger=dataset_logger,
     )
     validate_that_required_columns_are_present(
-        input_df = all_files["data_mutations.txt"], 
+        input_df=all_files["data_mutations.txt"],
         dataset_file_name="data_mutations.txt",
-        required_cols = REQUIRED_MAF_COLS,
+        required_cols=REQUIRED_MAF_COLS,
         logger=dataset_logger,
     )
     run_cbioportal_validator(
@@ -279,6 +283,7 @@ def main():
     )
     if dataset_flagger.had_error:
         dataset_logger.error("FAILED: Validation of study failed")
-    
+
+
 if __name__ == "__main__":
     main()

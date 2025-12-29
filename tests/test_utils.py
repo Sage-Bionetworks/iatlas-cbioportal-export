@@ -2,7 +2,8 @@ import os
 import pytest
 import tempfile
 
-import utils
+from src.iatlascbioportalexport import utils
+
 
 def test_that_clear_workspace_removes_subdirectories():
     # Create a temporary parent directory
@@ -11,7 +12,7 @@ def test_that_clear_workspace_removes_subdirectories():
         subdirs = ["folder1", "folder2", "folder3"]
         for sub in subdirs:
             os.makedirs(os.path.join(temp_dir, sub))
-            
+
         # Create some files
         filenames = ["file1.txt", "file2.txt"]
         for fname in filenames:
@@ -24,7 +25,7 @@ def test_that_clear_workspace_removes_subdirectories():
 
         # Check that all files and subfolders are removed
         assert os.listdir(temp_dir) == []
-        
+
 
 def test_that_clear_workspace_does_nothing_on_empty_directory():
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -65,4 +66,3 @@ def test_get_local_dataset_output_folder_path(
         dataset_name, datahub_tools_path
     )
     assert result == expected
-

@@ -6,7 +6,7 @@ from unittest import mock
 import pytest
 import pandas as pd
 
-import maf as maf_to_cbio
+from src.iatlascbioportalexport import maf as maf_to_cbio
 
 
 @pytest.fixture
@@ -111,10 +111,10 @@ def test_that_postprocessing_removes_chrM_variants():
         # Case 2: output has duplicates -> Error
         (
             pd.DataFrame(
-                {"Tumor_Sample_Barcode": [10, 10, 30], "Chromosome": ["1", "X", "Y"]}
+                {"Tumor_Sample_Barcode": [10, 10, 30], "Chromosome": ["X", "X", "Y"]}
             ),
             pd.DataFrame(
-                {"Tumor_Sample_Barcode": [10, 10, 30], "Chromosome": ["1", "X", "Y"]}
+                {"Tumor_Sample_Barcode": [10, 10, 30], "Chromosome": ["X", "X", "Y"]}
             ),
             "There are duplicates in the output.",
         ),
@@ -131,7 +131,7 @@ def test_that_postprocessing_removes_chrM_variants():
         # Case 4: has chrM variants and after removing, input rows and output rows are unequal
         (
             pd.DataFrame(
-                {"Tumor_Sample_Barcode": [23, 30], "Chromosome": ["X", "Y"]}
+                {"Tumor_Sample_Barcode": [20, 23, 30], "Chromosome": ["chrM", "X", "Y"]}
             ),
             pd.DataFrame(
                 {"Tumor_Sample_Barcode": [20, 30], "Chromosome": ["X", "Y"]}
@@ -139,7 +139,7 @@ def test_that_postprocessing_removes_chrM_variants():
             "The Tumor_Sample_Barcode values are not equal in the output compared to input.",
         ),
     ],
-    ids=["unequal_rows", "dups", "tumor_sample_barcode_not_equal"],
+    ids=["unequal_rows", "dups", "tumor_sample_barcode_not_equal", "has_chrm_variants"],
 )
 def test_that_validate_export_files_does_expected_error_logging(
     input, output, error, caplog
@@ -226,28 +226,28 @@ def test_summarize_error_report(tmp_path):
     dataset_dir = tmp_path / "dataset"
     dataset_dir.mkdir()
 
-    # mock data_mutations_error_report.txt
     input_file = dataset_dir / "data_mutations_error_report.txt"
     df_input = pd.DataFrame(
         {
             "CHR": ["chr1", "chrM", "chr2", "chr1"],
             "FAILURE_REASON": ["ReasonA", "ReasonA", "ReasonB", "ReasonA"],
-            "VARIANT_CLASSIFICATION": [
-                "Class1",
-                "Class1",
-                "Class2",
-                "Class1",
-            ],
+            "VARIANT_CLASSIFICATION": ["Class1", "Class1", "Class2", "Class1"],
         }
     )
     df_input.to_csv(input_file, sep="\t", index=False)
+
     mock_logger = mock.MagicMock()
 
-    summary = maf_to_cbio.summarize_error_report(
-        dataset_name="dummy",
-        datahub_tools_path="/unused",
-        logger=mock_logger,
-    )
+    with mock.patch.object(
+        maf_to_cbio.utils,
+        "get_local_dataset_output_folder_path",
+        return_value=str(dataset_dir),
+    ):
+        summary = maf_to_cbio.summarize_error_report(
+            dataset_name="dummy",
+            datahub_tools_path="unused",
+            logger=mock_logger,
+        )
 
     # Assert expected output
     # chrM row is ignored
