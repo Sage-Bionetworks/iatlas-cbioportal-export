@@ -14,6 +14,7 @@ syn = utils.synapse_login()
 
 def read_and_merge_maf_files(input_folder_synid: str) -> pd.DataFrame:
     """Read in and merge MAF files from a specified folder
+        Takes .maf and .tsv extensions
 
     Args:
         folder: Synapse id of folder containing MAF files
@@ -25,7 +26,7 @@ def read_and_merge_maf_files(input_folder_synid: str) -> pd.DataFrame:
     # Filter for files ending in .maf
     dfs = []
     for item in entities:
-        if item["name"].endswith(".maf"):
+        if item["name"].endswith(".maf") or item["name"].endswith(".tsv"):
             df = pd.read_csv(syn.get(item["id"]).path, sep="\t", comment="#")
             dfs.append(df)
 
@@ -92,7 +93,6 @@ def run_genome_nexus(
     dataset_dir = os.path.join(
         f"{datahub_tools_path}/add-clinical-header/", dataset_name
     )
-
     if n_workers and n_workers > 1:
         args_list = [(i, dataset_dir) for i in range(1, n_maf_chunks + 1)]
         with Pool(processes=n_workers) as pool:
