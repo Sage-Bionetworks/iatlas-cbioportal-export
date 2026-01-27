@@ -195,6 +195,12 @@ def get_all_files_to_validate(
     all_files = {}
     # exclude the validator
     for file in utils.REQUIRED_OUTPUT_FILES:
+        # skip maf files as some datasets don't have them
+        if dataset_name in utils.NO_MAF_DATASETS and file in [
+            "data_mutations.txt",
+            "meta_mutations.txt",
+        ]:
+            continue
         all_files[file] = pd.read_csv(os.path.join(dataset_dir, file), sep="\t")
     return all_files
 
@@ -264,17 +270,18 @@ def main():
         log_file_name="iatlas_validation_log.txt",
         flagger=dataset_flagger,
     )
-    validate_that_neoantigen_maf_ids_are_equal(
-        input_df=all_files["data_mutations.txt"],
-        neoantigen_data_synid=args.neoantigen_data_synid,
-        logger=dataset_logger,
-    )
-    validate_that_required_columns_are_present(
-        input_df=all_files["data_mutations.txt"],
-        dataset_file_name="data_mutations.txt",
-        required_cols=REQUIRED_MAF_COLS,
-        logger=dataset_logger,
-    )
+    if args.dataset not in utils.NO_MAF_DATASETS:
+        validate_that_neoantigen_maf_ids_are_equal(
+            input_df=all_files["data_mutations.txt"],
+            neoantigen_data_synid=args.neoantigen_data_synid,
+            logger=dataset_logger,
+        )
+        validate_that_required_columns_are_present(
+            input_df=all_files["data_mutations.txt"],
+            dataset_file_name="data_mutations.txt",
+            required_cols=REQUIRED_MAF_COLS,
+            logger=dataset_logger,
+        )
     run_cbioportal_validator(
         dataset_name=args.dataset,
         cbioportal_path=args.cbioportal_path,

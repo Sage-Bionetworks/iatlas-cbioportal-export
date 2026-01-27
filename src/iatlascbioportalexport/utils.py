@@ -21,6 +21,10 @@ REQUIRED_OUTPUT_FILES = [
     "meta_rna_seq_mrna.txt",
 ]
 
+NO_MAF_DATASETS = [
+    "Gide_Cell_2019",
+    "Prins_GBM_2019"
+]
 
 def synapse_login(debug: typing.Optional[bool] = False) -> synapseclient.Synapse:
     """

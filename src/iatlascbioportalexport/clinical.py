@@ -70,6 +70,8 @@ REQUIRED_OUTPUT_FILES = [
     "meta_clinical_sample.txt",
 ]
 
+ONCOTREE_VERSION = "oncotree_2025_04_08"
+
 
 def filter_out_non_analyses_samples(input_df: pd.DataFrame) -> pd.DataFrame:
     """Filter out the non analyses samples.
@@ -486,7 +488,8 @@ def convert_oncotree_codes(datahub_tools_path: str) -> pd.DataFrame:
 
     cmd = f"""
         python3 {datahub_tools_path}/oncotree-code-converter/oncotree_code_converter.py \
-            --clinical-file {datahub_tools_path}/add-clinical-header/cli_remapped.csv
+            --clinical-file {datahub_tools_path}/add-clinical-header/cli_remapped.csv \
+            --oncotree-version {ONCOTREE_VERSION}
     """
     # Run in shell to allow sourcing
     subprocess.run(cmd, shell=True, executable="/bin/bash")
