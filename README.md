@@ -234,8 +234,9 @@ Any additional files are the intermediate processing files and can be ignored.
 5. Run the general validation + cbioportal validator on your outputted files via `validate.py`
 6. Check your `cbioportal_validator_output.txt`
 7. Resolve any `ERROR`s
-8. Repeat steps 5-7 until all `ERROR`s are gone
-9. Run `load.py` now with the `upload` flag to upload to synapse
+8. Repeat the previous steps until all `ERROR`s are gone or deemed as OK
+9. Create folders on synapse
+10. Run `load.py` now with the `upload` flag to upload to synapse to the folder(s) you created before
 
 **Example:**
 Sample workflow
@@ -303,6 +304,15 @@ python3 load.py
 ```
 
 <p align="right"><a href="#table-of-contents">↑ Back to top</a></p>
+
+## Adding new datasets
+
+If new datasets get added to the input clinical data sheet, be sure to add their name (which should match their name in the `Dataset` column of the clinical data) to `IATLAS_DATASETS` in [clinical.py](/src/iatlascbioportalexport/clinical.py)
+
+Any additional transforms needed for the dataset should be added as transform functions in the same clinical module.
+
+If these datasets don't have MAF files, be sure to add them to the `NO_MAF_DATASETS` list as well.
+
 
 ## Running tests
 
