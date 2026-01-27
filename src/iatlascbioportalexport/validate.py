@@ -179,7 +179,9 @@ def validate_that_required_columns_are_present(
 def get_all_files_to_validate(
     dataset_name: str, datahub_tools_path: str
 ) -> Dict[str, pd.DataFrame]:
-    """This pulls in all of the datasets needed for validation
+    """This pulls in all of the datasets needed for validation.
+        We have a few datasets where we don't expect any
+        mutation data.
 
     Args:
         dataset_name (str): name of the dataset to validate
@@ -270,6 +272,8 @@ def main():
         log_file_name="iatlas_validation_log.txt",
         flagger=dataset_flagger,
     )
+    # if dataset doesn't have mutation files, skip
+    # maf validation
     if args.dataset not in utils.NO_MAF_DATASETS:
         validate_that_neoantigen_maf_ids_are_equal(
             input_df=all_files["data_mutations.txt"],

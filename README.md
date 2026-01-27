@@ -100,6 +100,7 @@ docker run --rm -it -e SYNAPSE_AUTH_TOKEN=$YOUR_SYNAPSE_TOKEN <some_docker_image
 ## Overview
 
 ### maf.py
+
 This script will run the iatlas mutations data through genome nexus so it can be ingested by cbioportal team for visualization.
 
 The script does the following:
@@ -110,8 +111,10 @@ The script does the following:
 4. Concatenates the results
 5. [Creates the required meta_* data](https://github.com/cBioPortal/datahub-study-curation-tools/tree/master/generate-meta-files)
 
+**NOTE** Not all datasets will have mutation data available so this step may not be needed for all datasets
 
 ### clinical.py
+
 This script will process/transform the iatlas clinical data to be cbioportal format friendly so it can be ingested by cbioportal team for visualization.
 
 The script does the following:
