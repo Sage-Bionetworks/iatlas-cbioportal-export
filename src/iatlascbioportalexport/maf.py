@@ -165,6 +165,15 @@ def concatenate_mafs(
     annotated_mafs_all = pd.concat(annotated_mafs)
     error_mafs_all = pd.concat(error_mafs)
 
+    if dataset_name == "PRINCE":
+        annotated_mafs_all.loc[
+            annotated_mafs_all.Tumor_Sample_Barcode == "A982BR648-001-BK00068BL01-5",
+            "Tumor_Sample_Barcode",
+        ] = "A982BR648-001"
+        error_mafs_all.loc[
+            error_mafs_all.SAMPLE_ID == "A982BR648-001-BK00068BL01-5", "SAMPLE_ID"
+        ] = "A982BR648-001"
+
     annotated_mafs_all_processed = postprocessing(input_df=annotated_mafs_all)
     annotated_mafs_all_processed.to_csv(
         f"{dataset_dir}/data_mutations.txt", sep="\t", index=False, float_format="%.12g"
@@ -232,19 +241,44 @@ def validate_export_files(
         output_df (pd.DataFrame): output annotated maf data
     """
     logger = kwargs.get("logger", logging.getLogger(__name__))
+
     # exclude chrM variants when counting
-    input_df_excl_chrM = input_df[input_df.Chromosome != "chrM"]
+    input_df_excl_chrM = input_df[input_df["Chromosome"] != "chrM"]
+
     if len(input_df_excl_chrM) != len(output_df):
         logger.error(
-            f"Output rows {len(output_df)} are not equal to input rows {len(input_df_excl_chrM)}."
+            "Output rows %s are not equal to input rows %s (excluding chrM).",
+            len(output_df),
+            len(input_df_excl_chrM),
         )
-    # no dups
-    if len(output_df[output_df.duplicated()]) > 0:
-        logger.error("There are duplicates in the output.")
-    # check that the Tumor_Sample_Barcode exists in original maf
-    if set(list(output_df.Tumor_Sample_Barcode.unique())) != set(
-        list(input_df_excl_chrM.Tumor_Sample_Barcode.unique())
-    ):
+
+    # duplicates: print duplicate rows (entire dataset for dups)
+    dup_mask = output_df.duplicated(keep=False)
+    if dup_mask.any():
+        dup_rows = output_df.loc[dup_mask].sort_values(by=list(output_df.columns))
+        logger.error(
+            "There are duplicates in the output. Duplicate rows:\n%s",
+            dup_rows.to_string(index=True),
+        )
+
+    # Tumor_Sample_Barcode mismatch: show exactly which IDs differ
+    out_ids = set(output_df["Tumor_Sample_Barcode"].astype(str).unique())
+    in_ids = set(input_df_excl_chrM["Tumor_Sample_Barcode"].astype(str).unique())
+
+    only_in_output = sorted(out_ids - in_ids)
+    only_in_input = sorted(in_ids - out_ids)
+
+    if only_in_output or only_in_input:
+        if only_in_output:
+            logger.error(
+                "Tumor_Sample_Barcode IDs present in OUTPUT but missing from INPUT: %s",
+                only_in_output,
+            )
+        if only_in_input:
+            logger.error(
+                "Tumor_Sample_Barcode IDs present in INPUT but missing from OUTPUT: %s",
+                only_in_input,
+            )
         logger.error(
             "The Tumor_Sample_Barcode values are not equal in the output compared to input."
         )
@@ -263,13 +297,27 @@ def validate_that_allele_freq_are_not_na(
         input_df (pd.DataFrame): input dataframe with allele freq columns
     """
     logger = kwargs.get("logger", logging.getLogger(__name__))
-    # check that allele _freq are present
+
     allele_freq_cols = ["t_ref_count", "t_alt_count"]
-    if set(allele_freq_cols) <= set(input_df.columns):
-        if input_df[allele_freq_cols].isna().any().any():
-            logger.error(
-                f"There are NAs in the allele frequency columns: {allele_freq_cols}"
-            )
+    if not set(allele_freq_cols) <= set(input_df.columns):
+        missing = sorted(set(allele_freq_cols) - set(input_df.columns))
+        logger.error("Missing required allele frequency columns: %s", missing)
+        return
+
+    na_mask = input_df[allele_freq_cols].isna().any(axis=1)
+    if na_mask.any():
+        na_rows = input_df.loc[na_mask, allele_freq_cols]
+        na_indices = list(na_rows.index)
+
+        logger.error(
+            "There are NAs in allele frequency columns %s. Row indices with NA: %s",
+            allele_freq_cols,
+            na_indices,
+        )
+        logger.error(
+            "Rows with NA in allele frequency columns:\n%s",
+            na_rows.to_string(index=True),
+        )
 
 
 def summarize_error_report(

@@ -789,59 +789,143 @@ def validate_export_files(
         datahub_tools_path (str): Path to the datahub tools repo
     """
     logger = kwargs.get("logger", logging.getLogger(__name__))
+
     input_df = pd.read_csv(syn.get(input_df_synid).path, sep="\t")
-    cli_df_subset = input_df[input_df["Dataset"] == dataset_name]
+    cli_df_subset = input_df[input_df["Dataset"] == dataset_name].copy()
+
     dataset_dir = utils.get_local_dataset_output_folder_path(
         dataset_name, datahub_tools_path
     )
+
+    # ---- Validation #1: required output files exist ----
+    missing_files = []
     for file in REQUIRED_OUTPUT_FILES:
         if file.startswith("cases"):
             required_file_path = f"{dataset_dir}/case_lists/{file}"
         else:
             required_file_path = f"{dataset_dir}/{file}"
         if not Path(required_file_path).exists():
-            logger.error(f"Missing REQUIRED OUTPUT FILE: {required_file_path}")
+            missing_files.append(required_file_path)
 
-    output_patient_df = pd.read_csv(
-        os.path.join(dataset_dir, f"data_clinical_patient.txt"),
-        sep="\t",
-        skiprows=4,  # skips the clinical header when reading it in
-    )
+    if missing_files:
+        logger.error(
+            "Missing REQUIRED OUTPUT FILES (%d):\n%s",
+            len(missing_files),
+            "\n".join(missing_files),
+        )
 
-    output_samples_df = pd.read_csv(
-        os.path.join(dataset_dir, f"data_clinical_sample.txt"),
-        sep="\t",
-        skiprows=4,  # skips the clinical header when reading it in
-    )
-    n_samples_start = len(cli_df_subset.sample_name.unique())
-    n_patients_start = len(cli_df_subset.patient_name.unique())
-    n_samples_end = len(output_samples_df.SAMPLE_ID.unique())
-    n_patients_end = len(output_patient_df.PATIENT_ID.unique())
+    # ---- Load outputs ----
+    output_patient_path = os.path.join(dataset_dir, "data_clinical_patient.txt")
+    output_sample_path = os.path.join(dataset_dir, "data_clinical_sample.txt")
 
+    output_patient_df = pd.read_csv(output_patient_path, sep="\t", skiprows=4)
+    output_samples_df = pd.read_csv(output_sample_path, sep="\t", skiprows=4)
+
+    # ---- Validation #2: row counts match ----
     if len(cli_df_subset) != len(output_samples_df):
         logger.error(
-            f"Input is {len(cli_df_subset)} rows, output is {len(output_samples_df)} rows"
+            "Row count mismatch: input subset has %d rows, output samples has %d rows",
+            len(cli_df_subset),
+            len(output_samples_df),
         )
-    if n_samples_start != n_samples_end:
+
+    # ---- Validation #3: sample IDs match (explicit diffs) ----
+    # (Assumes input has column "sample_name"; adjust if it differs)
+    input_sample_ids = set(cli_df_subset["sample_name"].astype(str).unique())
+    output_sample_ids = set(output_samples_df["SAMPLE_ID"].astype(str).unique())
+
+    samples_only_in_input = sorted(input_sample_ids - output_sample_ids)
+    samples_only_in_output = sorted(output_sample_ids - input_sample_ids)
+
+    if samples_only_in_input or samples_only_in_output:
+        if samples_only_in_input:
+            logger.error(
+                "Sample IDs present in INPUT but missing from OUTPUT (%d): %s",
+                len(samples_only_in_input),
+                samples_only_in_input,
+            )
+        if samples_only_in_output:
+            logger.error(
+                "Sample IDs present in OUTPUT but missing from INPUT (%d): %s",
+                len(samples_only_in_output),
+                samples_only_in_output,
+            )
+
+    # ---- Validation #4: patient IDs match (explicit diffs) ----
+    # (Assumes input has column "patient_name"; adjust if it differs)
+    input_patient_ids = set(cli_df_subset["patient_name"].astype(str).unique())
+    output_patient_ids = set(output_patient_df["PATIENT_ID"].astype(str).unique())
+
+    patients_only_in_input = sorted(input_patient_ids - output_patient_ids)
+    patients_only_in_output = sorted(output_patient_ids - input_patient_ids)
+
+    if patients_only_in_input or patients_only_in_output:
+        if patients_only_in_input:
+            logger.error(
+                "Patient IDs present in INPUT but missing from OUTPUT (%d): %s",
+                len(patients_only_in_input),
+                patients_only_in_input,
+            )
+        if patients_only_in_output:
+            logger.error(
+                "Patient IDs present in OUTPUT but missing from INPUT (%d): %s",
+                len(patients_only_in_output),
+                patients_only_in_output,
+            )
+
+    # ---- Validation #5: NA SAMPLE_ID rows (print row numbers + rows) ----
+    if "SAMPLE_ID" not in output_samples_df.columns:
+        logger.error("Output sample file is missing required column: SAMPLE_ID")
+    else:
+        na_sample_mask = output_samples_df["SAMPLE_ID"].isna()
+        if na_sample_mask.any():
+            na_sample_idx = list(output_samples_df.index[na_sample_mask])
+            logger.error(
+                "There are missing SAMPLE_ID values. Row indices: %s",
+                na_sample_idx,
+            )
+            logger.error(
+                "Rows with missing SAMPLE_ID:\n%s",
+                output_samples_df.loc[na_sample_mask].to_string(index=True),
+            )
+
+    # ---- Validation #6: NA PATIENT_ID rows (print row numbers + rows) ----
+    if "PATIENT_ID" not in output_patient_df.columns:
+        logger.error("Output patient file is missing required column: PATIENT_ID")
+    else:
+        na_patient_mask = output_patient_df["PATIENT_ID"].isna()
+        if na_patient_mask.any():
+            na_patient_idx = list(output_patient_df.index[na_patient_mask])
+            logger.error(
+                "There are missing PATIENT_ID values. Row indices: %s",
+                na_patient_idx,
+            )
+            logger.error(
+                "Rows with missing PATIENT_ID:\n%s",
+                output_patient_df.loc[na_patient_mask].to_string(index=True),
+            )
+
+    # ---- All-NA columns (print which columns) ----
+    patient_all_na_cols = output_patient_df.columns[
+        output_patient_df.isna().all()
+    ].tolist()
+    sample_all_na_cols = output_samples_df.columns[
+        output_samples_df.isna().all()
+    ].tolist()
+
+    if patient_all_na_cols:
         logger.error(
-            f"There are {n_samples_start} samples start, there are {n_samples_end} samples end"
+            "Patient columns with ALL NAs (%d): %s",
+            len(patient_all_na_cols),
+            patient_all_na_cols,
         )
-    if n_patients_start != n_patients_end:
+
+    if sample_all_na_cols:
         logger.error(
-            f"There are {n_patients_start} patients start, there are {n_patients_end} patients end"
+            "Sample columns with ALL NAs (%d): %s",
+            len(sample_all_na_cols),
+            sample_all_na_cols,
         )
-    if output_samples_df.SAMPLE_ID.isna().any():
-        logger.error("There are missing SAMPLE_ID values.")
-
-    if output_patient_df.PATIENT_ID.isna().any():
-        logger.error("There are missing PATIENT_ID values.")
-
-    # check that there are no all NA columns
-    if output_patient_df.isna().all().any():
-        logger.error("There are patient columns with ALL NAs.")
-
-    if output_samples_df.isna().all().any():
-        logger.error("There are sample columns with ALL NAs.")
 
     print("\n\n")
 

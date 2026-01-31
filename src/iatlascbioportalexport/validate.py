@@ -144,18 +144,30 @@ def validate_that_neoantigen_maf_ids_are_equal(
         neoantigen_data_synid (pd.DataFrame): Neoantigen data (prior to merge with sample clinical data)
     """
     logger = kwargs.get("logger", logging.getLogger(__name__))
+
     neoantigen_data = pd.read_csv(syn.get(neoantigen_data_synid).path, sep="\t")
 
-    # set both to string to standardize
-    neoantigen_data["Sample_ID"] = neoantigen_data["Sample_ID"].astype(str)
-    input_df["Tumor_Sample_Barcode"] = input_df["Tumor_Sample_Barcode"].astype(str)
+    # standardize types
+    maf_ids = set(input_df["Tumor_Sample_Barcode"].astype(str).unique())
+    neo_ids = set(neoantigen_data["Sample_ID"].astype(str).unique())
 
-    if set(input_df["Tumor_Sample_Barcode"].unique()) != set(
-        neoantigen_data["Sample_ID"].unique()
-    ):
-        logger.error(
-            "The Tumor_Sample_Barcode values in the maf data do not match the Sample_ID values in the neoantigen data."
-        )
+    only_in_maf = sorted(maf_ids - neo_ids)
+    only_in_neo = sorted(neo_ids - maf_ids)
+
+    if only_in_maf or only_in_neo:
+        if only_in_maf:
+            logger.error(
+                "Sample IDs present in MAF but missing from neoantigen data: %s",
+                only_in_maf,
+            )
+
+        if only_in_neo:
+            logger.error(
+                "Sample IDs present in neoantigen data but missing from MAF: %s",
+                only_in_neo,
+            )
+
+        logger.error("Tumor_Sample_Barcode and Sample_ID sets do not match.")
 
 
 def validate_that_required_columns_are_present(
