@@ -4,7 +4,9 @@ import os
 import subprocess
 from typing import Dict
 
+import numpy as np
 import pandas as pd
+from ydata_profiling import ProfileReport
 
 from iatlascbioportalexport import utils
 
@@ -215,7 +217,13 @@ def get_all_files_to_validate(
             "meta_mutations.txt",
         ]:
             continue
-        all_files[file] = pd.read_csv(os.path.join(dataset_dir, file), sep="\t")
+
+        if file.startswith("data_clinical"):
+            all_files[file] = pd.read_csv(
+                os.path.join(dataset_dir, file), sep="\t", skiprows=4
+            )
+        else:
+            all_files[file] = pd.read_csv(os.path.join(dataset_dir, file), sep="\t")
     return all_files
 
 
@@ -250,6 +258,45 @@ def run_cbioportal_validator(
     logger.info(f"cbioportal validator results saved to: {validated}")
 
 
+def generate_profile_report(
+    input_df: str,
+    filename: str,
+    dataset_name: str,
+    datahub_tools_path: str,
+    **kwargs,
+) -> None:
+    """Uses ydata-profiling to create a summary report for each dataset.
+        NOTE: Word clouds are excluded due to some fields having a ton of distinct
+        values of text field and there's a limit on what the report can add to
+        a wordcloud before crashing.
+
+    Args:
+        input_df (pd.DataFrame): input data to generate profile report for
+        filename (str): name of the file
+        dataset_name (str): name of the dataset to validate
+        datahub_tools_path (str): local path to the datahub-tools repo
+    """
+    logger = kwargs.get("logger", logging.getLogger(__name__))
+    logger.info(f"Generating report for {filename}")
+    dataset_dir = utils.get_local_dataset_output_folder_path(
+        dataset_name, datahub_tools_path
+    )
+    try:
+        profile = ProfileReport(
+            input_df,
+            title="YData Profiling Report",
+            vars={
+                "cat": {"words": False},  # removes wordcloud generation
+                "text": {"words": False},
+            },
+            interactions={"continuous": False},  # optional: reduces heavy plots
+            correlations=None,
+        )
+        profile.to_file(f"{dataset_dir}/{filename}_profile_report.html")
+    except Exception as e:
+        logger.error(f"Could not generate report for {filename}. Error is {e}\n")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -277,6 +324,14 @@ def main():
     all_files = get_all_files_to_validate(
         dataset_name=args.dataset, datahub_tools_path=args.datahub_tools_path
     )
+    for file in all_files:
+        generate_profile_report(
+            input_df=all_files[file],
+            filename=file,
+            dataset_name=args.dataset,
+            datahub_tools_path=args.datahub_tools_path,
+        )
+
     dataset_flagger = utils.ErrorFlagHandler()
     dataset_logger = utils.create_logger(
         dataset_name=args.dataset,

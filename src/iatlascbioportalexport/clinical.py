@@ -831,7 +831,7 @@ def validate_export_files(
 
     # ---- Validation #3: sample IDs match (explicit diffs) ----
     # (Assumes input has column "sample_name"; adjust if it differs)
-    input_sample_ids = set(cli_df_subset["sample_name"].astype(str).unique())
+    input_sample_ids = set(cli_df_subset["study_sample_name"].astype(str).unique())
     output_sample_ids = set(output_samples_df["SAMPLE_ID"].astype(str).unique())
 
     samples_only_in_input = sorted(input_sample_ids - output_sample_ids)
@@ -853,7 +853,7 @@ def validate_export_files(
 
     # ---- Validation #4: patient IDs match (explicit diffs) ----
     # (Assumes input has column "patient_name"; adjust if it differs)
-    input_patient_ids = set(cli_df_subset["patient_name"].astype(str).unique())
+    input_patient_ids = set(cli_df_subset["study_patient_name"].astype(str).unique())
     output_patient_ids = set(output_patient_df["PATIENT_ID"].astype(str).unique())
 
     patients_only_in_input = sorted(input_patient_ids - output_patient_ids)
