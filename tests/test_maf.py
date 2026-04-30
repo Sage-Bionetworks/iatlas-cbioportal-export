@@ -19,6 +19,7 @@ def test_that_read_and_merge_maf_files_returns_expected_when_has_maf_files(syn_m
     syn_mock.getChildren.return_value = [
         {"name": "file1.maf", "id": "syn1"},
         {"name": "file2.maf", "id": "syn2"},
+        {"name": "file3.tsv", "id": "syn3"},
     ]
 
     syn_mock.get.side_effect = lambda x: mock.Mock(path=f"/fake/path/{x}.maf")
@@ -32,10 +33,11 @@ def test_that_read_and_merge_maf_files_returns_expected_when_has_maf_files(syn_m
         mock_read_csv.side_effect = [
             pd.DataFrame({"col": [1]}),
             pd.DataFrame({"col": [2]}),
+            pd.DataFrame({"col": [3]}),
         ]
 
         result = maf_to_cbio.read_and_merge_maf_files("synFolder123")
-        assert result.equals(pd.DataFrame({"col": [1, 2]}))
+        assert result.equals(pd.DataFrame({"col": [1, 2, 3]}))
 
 
 def test_read_and_merge_maf_files_returns_none_when_no_maf_files(syn_mock):

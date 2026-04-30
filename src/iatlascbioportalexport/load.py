@@ -43,7 +43,9 @@ def save_to_synapse(
     version_comment: str = None,
 ) -> None:
     """Saves the dataset's clinical file, case lists
-        and meta files to its synapse respective folders
+        and meta files to its synapse respective folders.
+        Skips the maf files if the dataset is expected to not have any
+        maf files
 
     Args:
         dataset_name (str): name of the iatlas dataset to save to
@@ -57,6 +59,11 @@ def save_to_synapse(
     dataset_dir = os.path.join(datahub_tools_path, "add-clinical-header", dataset_name)
     # store required files
     for file in utils.REQUIRED_OUTPUT_FILES:
+        if (
+            file in ["meta_mutations.txt", "data_mutations.txt"]
+            and dataset_name in utils.NO_MAF_DATASETS
+        ):
+            continue
         syn.store(
             synapseclient.File(
                 f"{dataset_dir}/{file}",

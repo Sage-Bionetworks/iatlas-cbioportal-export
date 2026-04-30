@@ -4,7 +4,9 @@ import os
 import subprocess
 from typing import Dict
 
+import numpy as np
 import pandas as pd
+from ydata_profiling import ProfileReport
 
 from iatlascbioportalexport import utils
 
@@ -144,18 +146,30 @@ def validate_that_neoantigen_maf_ids_are_equal(
         neoantigen_data_synid (pd.DataFrame): Neoantigen data (prior to merge with sample clinical data)
     """
     logger = kwargs.get("logger", logging.getLogger(__name__))
+
     neoantigen_data = pd.read_csv(syn.get(neoantigen_data_synid).path, sep="\t")
 
-    # set both to string to standardize
-    neoantigen_data["Sample_ID"] = neoantigen_data["Sample_ID"].astype(str)
-    input_df["Tumor_Sample_Barcode"] = input_df["Tumor_Sample_Barcode"].astype(str)
+    # standardize types
+    maf_ids = set(input_df["Tumor_Sample_Barcode"].astype(str).unique())
+    neo_ids = set(neoantigen_data["Sample_ID"].astype(str).unique())
 
-    if set(input_df["Tumor_Sample_Barcode"].unique()) != set(
-        neoantigen_data["Sample_ID"].unique()
-    ):
-        logger.error(
-            "The Tumor_Sample_Barcode values in the maf data do not match the Sample_ID values in the neoantigen data."
-        )
+    only_in_maf = sorted(maf_ids - neo_ids)
+    only_in_neo = sorted(neo_ids - maf_ids)
+
+    if only_in_maf or only_in_neo:
+        if only_in_maf:
+            logger.error(
+                "Sample IDs present in MAF but missing from neoantigen data: %s",
+                only_in_maf,
+            )
+
+        if only_in_neo:
+            logger.error(
+                "Sample IDs present in neoantigen data but missing from MAF: %s",
+                only_in_neo,
+            )
+
+        logger.error("Tumor_Sample_Barcode and Sample_ID sets do not match.")
 
 
 def validate_that_required_columns_are_present(
@@ -179,7 +193,9 @@ def validate_that_required_columns_are_present(
 def get_all_files_to_validate(
     dataset_name: str, datahub_tools_path: str
 ) -> Dict[str, pd.DataFrame]:
-    """This pulls in all of the datasets needed for validation
+    """This pulls in all of the datasets needed for validation.
+        We have a few datasets where we don't expect any
+        mutation data.
 
     Args:
         dataset_name (str): name of the dataset to validate
@@ -195,7 +211,19 @@ def get_all_files_to_validate(
     all_files = {}
     # exclude the validator
     for file in utils.REQUIRED_OUTPUT_FILES:
-        all_files[file] = pd.read_csv(os.path.join(dataset_dir, file), sep="\t")
+        # skip maf files as some datasets don't have them
+        if dataset_name in utils.NO_MAF_DATASETS and file in [
+            "data_mutations.txt",
+            "meta_mutations.txt",
+        ]:
+            continue
+
+        if file.startswith("data_clinical"):
+            all_files[file] = pd.read_csv(
+                os.path.join(dataset_dir, file), sep="\t", skiprows=4
+            )
+        else:
+            all_files[file] = pd.read_csv(os.path.join(dataset_dir, file), sep="\t")
     return all_files
 
 
@@ -230,6 +258,45 @@ def run_cbioportal_validator(
     logger.info(f"cbioportal validator results saved to: {validated}")
 
 
+def generate_profile_report(
+    input_df: str,
+    filename: str,
+    dataset_name: str,
+    datahub_tools_path: str,
+    **kwargs,
+) -> None:
+    """Uses ydata-profiling to create a summary report for each dataset.
+        NOTE: Word clouds are excluded due to some fields having a ton of distinct
+        values of text field and there's a limit on what the report can add to
+        a wordcloud before crashing.
+
+    Args:
+        input_df (pd.DataFrame): input data to generate profile report for
+        filename (str): name of the file
+        dataset_name (str): name of the dataset to validate
+        datahub_tools_path (str): local path to the datahub-tools repo
+    """
+    logger = kwargs.get("logger", logging.getLogger(__name__))
+    logger.info(f"Generating report for {filename}")
+    dataset_dir = utils.get_local_dataset_output_folder_path(
+        dataset_name, datahub_tools_path
+    )
+    try:
+        profile = ProfileReport(
+            input_df,
+            title="YData Profiling Report",
+            vars={
+                "cat": {"words": False},  # removes wordcloud generation
+                "text": {"words": False},
+            },
+            interactions={"continuous": False},  # optional: reduces heavy plots
+            correlations=None,
+        )
+        profile.to_file(f"{dataset_dir}/{filename}_profile_report.html")
+    except Exception as e:
+        logger.error(f"Could not generate report for {filename}. Error is {e}\n")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -257,6 +324,14 @@ def main():
     all_files = get_all_files_to_validate(
         dataset_name=args.dataset, datahub_tools_path=args.datahub_tools_path
     )
+    for file in all_files:
+        generate_profile_report(
+            input_df=all_files[file],
+            filename=file,
+            dataset_name=args.dataset,
+            datahub_tools_path=args.datahub_tools_path,
+        )
+
     dataset_flagger = utils.ErrorFlagHandler()
     dataset_logger = utils.create_logger(
         dataset_name=args.dataset,
@@ -264,17 +339,20 @@ def main():
         log_file_name="iatlas_validation_log.txt",
         flagger=dataset_flagger,
     )
-    validate_that_neoantigen_maf_ids_are_equal(
-        input_df=all_files["data_mutations.txt"],
-        neoantigen_data_synid=args.neoantigen_data_synid,
-        logger=dataset_logger,
-    )
-    validate_that_required_columns_are_present(
-        input_df=all_files["data_mutations.txt"],
-        dataset_file_name="data_mutations.txt",
-        required_cols=REQUIRED_MAF_COLS,
-        logger=dataset_logger,
-    )
+    # if dataset doesn't have mutation files, skip
+    # maf validation
+    if args.dataset not in utils.NO_MAF_DATASETS:
+        validate_that_neoantigen_maf_ids_are_equal(
+            input_df=all_files["data_mutations.txt"],
+            neoantigen_data_synid=args.neoantigen_data_synid,
+            logger=dataset_logger,
+        )
+        validate_that_required_columns_are_present(
+            input_df=all_files["data_mutations.txt"],
+            dataset_file_name="data_mutations.txt",
+            required_cols=REQUIRED_MAF_COLS,
+            logger=dataset_logger,
+        )
     run_cbioportal_validator(
         dataset_name=args.dataset,
         cbioportal_path=args.cbioportal_path,
